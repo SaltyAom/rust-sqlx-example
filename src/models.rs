@@ -2,14 +2,16 @@ use serde::{Deserialize, Serialize};
 use sqlx::{ FromRow, PgPool };
 use anyhow::Result;
 
-#[derive(FromRow)]
+// Database's table struct
+#[derive(FromRow, Serialize)]
 pub struct Team {
     pub name: String,
     pub role: String,
     pub age: i32,
 }
 
-#[derive(Serialize, Deserialize)]
+// Struct receive from POST form
+#[derive(Deserialize)]
 pub struct Member {
     pub name: String,
     pub role: String,
@@ -27,41 +29,28 @@ impl Team {
         Ok(())
     }
 
-    pub async fn list(connection: &PgPool) -> Result<Vec<Member>> {
-        let mut member_list: Vec<Member> = vec![];
-
-        let members = sqlx::query!(r#"
+    pub async fn list(connection: &PgPool) -> Result<Vec<Team>> {
+        let members = sqlx::query_as::<_, Team>(r#"
             SELECT name, role, age FROM team
         "#)
             .fetch_all(connection)
             .await?;
 
-        for member in members {
-            member_list.push(Member {
-                name: member.name,
-                role: member.role,
-                age: member.age
-            })
-        }
-
         Ok(
-            member_list
+            members
         )
     }
 
-    pub async fn specific(connection: &PgPool) -> Result<Member> {
-        let member = sqlx::query!(r#"
+    pub async fn specific(connection: &PgPool) -> Result<Team> {
+        let member = sqlx::query_as::<_, Team>(r#"
             SELECT name, role, age FROM team WHERE name = $1
-        "#, "SaltyAom")
+        "#)
+            .bind("SaltyAom")
             .fetch_one(connection)
             .await?;
 
         Ok(
-            Member {
-                name: member.name,
-                role: member.role,
-                age: member.age,
-            }
+            member
         )
     }
 }
